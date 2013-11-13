@@ -1,0 +1,70 @@
+import requests
+import json
+import pprint
+import time
+ 
+PREFIX="http://adslabs.org/adsabs/api/search/"
+APIKEY="API Key"
+ 
+import re
+re2='(&#176;)'
+ 
+re1='((?:\S+))'
+re3=re1
+rg = re.compile(re1+re2+re3,re.IGNORECASE|re.DOTALL)
+def myfunction(myword, start, numrows, filename, localmode=False):
+    theurlis=PREFIX+"?q="+myword+"&hl=full&rows="+str(numrows)+"&start="+str(start)+"&dev_key="+APIKEY
+    matchresults={}
+    if not localmode:
+        print theurlis
+        result=requests.get(theurlis)
+        myjson=result.text
+        myresultdict=json.loads(myjson)
+        myresults=myresultdict['results']['docs']
+        myshortformresults={e['bibcode']: e['highlights'] for e in myresults}
+        out=json.dumps(myshortformresults)
+        fd=open(filename, "w")
+        fd.write(out)
+        fd.close()
+    else:
+        stufftr=open(filename).read()
+        myshortformresults=json.loads(stufftr)
+ 
+    for bibcode in myshortformresults.keys():
+        resultsdict=myshortformresults[bibcode]
+        for resulttype in resultsdict.keys():
+            snippets=resultsdict[resulttype]
+            for snippet in snippets:
+                m=rg.search(snippet)
+                if m:
+                    var1=m.group(1)
+                    c1=m.group(2)
+                    var3=m.group(3)
+                    print bibcode, "("+var1+")"+"("+c1+")"+"("+var3+")"+"\n"
+                    matchresults[bibcode]=(var1,var3)
+    return matchresults
+ 
+if __name__=="__main__":
+    import sys
+    # snip="of 25&#176;N and 40&#176;N is used"
+    # m=rg.search(snip)
+    # if m:
+    #     float1=m.group(1)
+    #     c1=m.group(2)
+    #     var1=m.group(3)
+    #     print "("+float1+")"+"("+c1+")"+"("+var1+")"+"\n"
+    if len(sys.argv)<=1 or len(sys.argv) > 2:
+        print "No mode specified\n"
+        sys.exit(0)
+    mode=sys.argv[1]
+    print "MODE is", mode
+    if mode=="False":
+        mode=False
+    mode=bool(mode)
+    print "MODE IS", mode
+    for i in range(10):
+        out=myfunction("latitude", i*100+1, 100, "results"+str(i)+".txt", mode)
+    # fd=open("results"+str(i)+".txt", "w")
+    # fd.write(out)
+    # fd.close()
+    #time.sleep(1)
